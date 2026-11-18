@@ -38,9 +38,20 @@ body{background:var(--ink);color:var(--paper);font-family:var(--ui);font-size:12
 #text.said{text-shadow:1px 0 currentColor}
 #next{position:absolute;right:12px;bottom:6px;font-style:normal;font-size:12px;color:var(--line);animation:bob 1s steps(2) infinite}
 @keyframes bob{50%{transform:translateY(3px)}}
-#san{position:absolute;left:0;right:0;top:-1px;height:1px;background:transparent}
-#san i{display:block;height:1px;background:var(--paper);width:100%;transition:width .6s}
-#sanl{position:absolute;right:10px;top:-8px;background:var(--ink);font-size:12px;line-height:15px;letter-spacing:2px;color:var(--line);padding:0 6px}
+/* 정신력 스테이터스: 왼쪽 위 작은 상자 하나. 10칸 게이지 + 숫자. 30 미만 적색, 20 미만 깜빡임, 깎이면 테두리가 번쩍 */
+#sanst{position:absolute;top:calc(8px + env(safe-area-inset-top,0px));left:max(10px,env(safe-area-inset-left,0px));
+  display:flex;align-items:center;gap:7px;padding:3px 8px;background:rgba(7,10,10,.82);border:1px solid var(--moss);
+  font-size:12px;line-height:15px;letter-spacing:1px;color:var(--line);pointer-events:none}
+#sanst .bar{display:flex;gap:1px}
+#sanst .bar i{display:block;width:5px;height:9px;background:var(--moss)}
+#sanst .bar i.on{background:var(--paper)}
+#sanst .num{min-width:19px;text-align:right;color:var(--paper);letter-spacing:0}
+#sanst.low .bar i.on{background:var(--red)}
+#sanst.low .num{color:var(--red)}
+#sanst.crit .bar i.on{animation:blink 1s steps(2) infinite}
+#sanst.hit{animation:hit .5s steps(1)}
+@keyframes blink{50%{opacity:.25}}
+@keyframes hit{0%,50%{border-color:var(--red);color:var(--red)}25%,75%{border-color:var(--moss)}}
 #side{flex:0 0 min(34%,330px);display:flex;flex-direction:column;gap:6px}
 #side:empty{display:none}
 #obs{display:flex;flex-wrap:wrap;gap:4px}
@@ -81,14 +92,15 @@ body{background:var(--ink);color:var(--paper);font-family:var(--ui);font-size:12
   #obs button{padding:9px 4px}
   .ov{position:fixed}
 }
-@media (prefers-reduced-motion:reduce){#next{animation:none}}
+@media (prefers-reduced-motion:reduce){#next,#sanst .bar i.on,#sanst.hit{animation:none}}
 </style>
 
 <div id="app"><div id="stage">
   <canvas id="c" width="480" height="270"></canvas>
+  <div id="sanst" hidden role="status" aria-label="정신력 100"><span>정신력</span><span class="bar"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="num">100</span></div>
   <button id="mute" type="button">소리 켬</button>
   <div id="ui" class="off">
-    <div id="dlg"><div id="san"><i></i></div><span id="sanl">정신력</span><span id="who"></span><p id="text"></p><i id="next">▼</i></div>
+    <div id="dlg"><span id="who"></span><p id="text"></p><i id="next">▼</i></div>
     <div id="side"></div>
   </div>
   <div class="ov" id="title"><div>
@@ -368,7 +380,7 @@ function frame(now){requestAnimationFrame(frame);const dt=Math.min(.05,(now-last
 }
 
 /* ───────────── UI ───────────── */
-const ui=$('#ui'),elText=$('#text'),elWho=$('#who'),elNext=$('#next'),elSide=$('#side'),elSan=$('#san i');
+const ui=$('#ui'),elText=$('#text'),elWho=$('#who'),elNext=$('#next'),elSide=$('#side'),elSt=$('#sanst'),elSegs=[...elSt.querySelectorAll('.bar i')],elSanN=elSt.querySelector('.num');let lastSan=100;
 let tapResolve=null,typing=false,skip=false,choiceCtl=null;
 function tap(){return new Promise(r=>tapResolve=r)}
 function onTap(){if(choiceCtl)return;if(typing){skip=true;return}if(tapResolve){const r=tapResolve;tapResolve=null;r()}}
@@ -384,7 +396,9 @@ async function line(l){const who=typeof l==='string'?'':l.who,t=typeof l==='stri
   typing=false;elNext.hidden=false;await tap()}
 async function narr(lines){if(!lines)return;ui.classList.remove('off');for(const l of [].concat(lines))await line(l);
   if(S.san<35&&Math.random()<.3)await line(pick(WHISPER))}
-function setSan(){elSan.style.width=Math.max(0,S.san)+'%';elSan.style.background=S.san<30?'var(--red)':'var(--paper)'}
+function setSan(){const v=Math.max(0,Math.round(S.san)),n=Math.ceil(v/10);elSegs.forEach((e,i)=>e.classList.toggle('on',i<n));
+  elSanN.textContent=v;elSt.setAttribute('aria-label','정신력 '+v);elSt.classList.toggle('low',v<30);elSt.classList.toggle('crit',v<20);
+  if(v<lastSan){elSt.classList.remove('hit');void elSt.offsetWidth;elSt.classList.add('hit')}lastSan=v}
 class Dead extends Error{}
 async function san(d){if(!d)return;if(d<=-12&&S.charm){S.charm=false;charm.visible=false;sfx.chime(true);await narr('룸미러에 걸린 부적이 귀퉁이부터 검게 탄다.\n방금 그것은, 당신에게 닿지 못했다.');return}
   S.san=Math.max(0,Math.min(100,S.san+d));setSan();if(d<=-8)S.shake=.25;if(S.san<=0)throw new Dead()}
@@ -567,7 +581,7 @@ async function ride(key){const p=P[key];let doom=0,looks={};S.doom=0;S.meter=380
 
 function lineup(){const g=['wet','child','black'],h=['drunk','shaman'];const a=g.sort(()=>Math.random()-.5).slice(0,2),b=pick(h);
   const o=[a[0],b,a[1]];if(o[0]==='black'){o[0]=o[2];o[2]='black'}return o}
-async function run(){S.san=100;S.fare=0;S.charm=false;charm.visible=false;setSan();clock=23*60+47;S.started=true;const log=[];let dead=false;
+async function run(){S.san=100;S.fare=0;S.charm=false;charm.visible=false;lastSan=100;setSan();elSt.hidden=false;clock=23*60+47;S.started=true;const log=[];let dead=false;
   try{await narr(['밤 열한 시 사십칠 분. 비.\n배차실은 오늘도 손님의 이름을 알려주지 않는다.','당신은 미터기를 누르고, 룸미러의 각도를 고친다.\n아직은, 빈 좌석이 비친다.']);
     const L=lineup();for(let i=0;i<L.length;i++){log.push(await ride(L[i]));clock+=11;if(i<L.length-1){S.target=10;await narr(RADIO[i%RADIO.length])}}
   }catch(e){if(!(e instanceof Dead))throw e;dead=true;choiceCtl=null;elSide.innerHTML='';elSide.hidden=false;setView('main');
@@ -586,6 +600,6 @@ $('#mute').onclick=()=>{A.on=!A.on;$('#mute').textContent=A.on?'소리 켬':'소
 $('#start').onclick=()=>{audioInit();$('#title').hidden=true;run()};
 try{const b=+localStorage.getItem('makcha.best');if(b)$('#best').textContent+=' · 최고 기록 '+b.toLocaleString()+'원'}catch(e){}
 drawNavi();drawMeter();drawRain();S.target=6;requestAnimationFrame(frame);
-window.__makcha={S,setView,setPassenger,scare,lightning,P};
+window.__makcha={S,setSan,setView,setPassenger,scare,lightning,P};
 })();
 </script>
