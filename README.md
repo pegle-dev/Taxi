@@ -12,6 +12,7 @@
 | `references/` | 참고 이미지 (참고용, 문서가 우선) |
 | `game/index.html` | 게임 본체 한 파일 (Three.js r128 + 바닐라 JS) |
 | `vendor/three.min.js` | 오프라인 빌드용 Three.js r128 |
+| `vendor/galmuri/` | 인게임 픽셀 글꼴 [갈무리](https://github.com/quiple/galmuri) 2.40.3 (SIL OFL 1.1). 본문 Galmuri14(15px 배수), UI·네비 Galmuri11(12px 배수) |
 | `tools/build_zip.sh` | 오프라인 실행 zip 빌드 |
 | `tools/build_site.sh` | GitHub Pages용 `_site/` 빌드 |
 | `.github/workflows/pages.yml` | Pages 자동 배포 |

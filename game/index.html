@@ -1,18 +1,23 @@
 <title>막차</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700;800&family=IBM+Plex+Sans+KR:wght@400;500&display=swap">
 <style>
+/* 글꼴: 갈무리(Galmuri, SIL OFL 1.1, quiple). 비트맵 글꼴이라 정해진 배수 크기에서만 또렷하다.
+   Galmuri14 = 15px의 배수(본문), Galmuri11 = 12px의 배수(UI·네비·미터). 자간도 정수 px.
+   빌드 스크립트가 아래 CDN 주소를 vendor/galmuri/ 사본으로 바꾼다. */
+@font-face{font-family:Galmuri14;font-weight:400;font-display:swap;src:url("https://cdn.jsdelivr.net/npm/galmuri@2.40.3/dist/Galmuri14.woff2") format("woff2")}
+@font-face{font-family:Galmuri11;font-weight:400;font-display:swap;src:url("https://cdn.jsdelivr.net/npm/galmuri@2.40.3/dist/Galmuri11.woff2") format("woff2")}
+@font-face{font-family:Galmuri11;font-weight:700;font-display:swap;src:url("https://cdn.jsdelivr.net/npm/galmuri@2.40.3/dist/Galmuri11-Bold.woff2") format("woff2")}
 /* layout: 16:9 저해상도 화면이 무대 전체. 글은 화면 아래 얇은 검정 상자 하나, 선택지는 그 오른쪽 세로 한 줄. */
 :root{
   color-scheme:dark;
   --ink:#070a0a; --night:#101a1f; --moss:#34463f; --line:#6b7d73; --paper:#c9d2c4;
   --mint:#6ff0b4; --mint-dim:#2f8f6c; --red:#9a2f2a;
-  --prose:"Nanum Myeongjo","Apple SD Gothic Neo","Noto Serif KR",serif;
-  --ui:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --prose:Galmuri14,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --ui:Galmuri11,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
 }
 html,body{height:100%}
-body{background:var(--ink);color:var(--paper);font-family:var(--ui);overflow:hidden;
-  -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+body{background:var(--ink);color:var(--paper);font-family:var(--ui);font-size:12px;overflow:hidden;font-synthesis:none;
+  -webkit-font-smoothing:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
 #app{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center}
 #stage{position:relative;width:min(100vw,calc(100vh*16/9));max-width:100%}
 #c{display:block;width:100%;aspect-ratio:16/9;max-width:100%;image-rendering:pixelated;image-rendering:crisp-edges;background:var(--ink)}
@@ -23,26 +28,27 @@ body{background:var(--ink);color:var(--paper);font-family:var(--ui);overflow:hid
 #dlg{flex:1 1 0;min-width:0;position:relative;background:rgba(7,10,10,.82);border:1px solid var(--line);
   padding:14px 18px 16px;min-height:104px;cursor:pointer}
 #who{position:absolute;top:-11px;left:14px;background:var(--ink);border:1px solid var(--line);
-  font-size:12px;letter-spacing:.12em;padding:1px 10px;color:var(--paper)}
+  font-size:12px;letter-spacing:1px;padding:1px 10px;color:var(--paper)}
 #who:empty{display:none}
-#text{margin:0;font-family:var(--prose);font-size:clamp(14px,1.55vw,19px);line-height:1.75;white-space:pre-wrap;word-break:keep-all}
-#text.said{font-weight:700}
-#next{position:absolute;right:12px;bottom:6px;font-style:normal;font-size:10px;color:var(--line);animation:bob 1s steps(2) infinite}
+#text{margin:0;font-family:var(--prose);font-size:15px;line-height:26px;white-space:pre-wrap;word-break:keep-all}
+/* 비트맵 글꼴엔 굵은 꼴이 없어서, 옛날 게임처럼 1px 겹쳐 찍어 굵게 한다 */
+#text.said{text-shadow:1px 0 currentColor}
+#next{position:absolute;right:12px;bottom:6px;font-style:normal;font-size:12px;color:var(--line);animation:bob 1s steps(2) infinite}
 @keyframes bob{50%{transform:translateY(3px)}}
 #san{position:absolute;left:0;right:0;top:-1px;height:1px;background:transparent}
 #san i{display:block;height:1px;background:var(--paper);width:100%;transition:width .6s}
-#sanl{position:absolute;right:10px;top:-9px;background:var(--ink);font-size:10px;letter-spacing:.2em;color:var(--line);padding:0 6px}
+#sanl{position:absolute;right:10px;top:-8px;background:var(--ink);font-size:12px;line-height:15px;letter-spacing:2px;color:var(--line);padding:0 6px}
 #side{flex:0 0 min(34%,330px);display:flex;flex-direction:column;gap:6px}
 #side:empty{display:none}
 #obs{display:flex;flex-wrap:wrap;gap:4px}
-#obs button{flex:1 1 auto;font:inherit;font-size:11px;letter-spacing:.06em;color:var(--line);background:rgba(7,10,10,.82);
+#obs button{flex:1 1 auto;font:inherit;font-size:12px;letter-spacing:0;color:var(--line);background:rgba(7,10,10,.82);
   border:1px solid var(--moss);padding:5px 4px;cursor:pointer}
 #obs button:hover,#obs button:focus-visible{color:var(--paper);border-color:var(--line);outline:none}
 #obs button:disabled{opacity:.3;cursor:default}
-.ch{font-family:var(--prose);font-size:clamp(13px,1.35vw,16px);text-align:left;color:var(--line);
-  background:rgba(7,10,10,.82);border:1px solid var(--moss);padding:8px 12px 8px 26px;cursor:pointer;position:relative;word-break:keep-all}
+.ch{font-family:var(--prose);font-size:15px;line-height:22px;text-align:left;color:var(--line);
+  background:rgba(7,10,10,.82);border:1px solid var(--moss);padding:7px 12px 7px 26px;cursor:pointer;position:relative;word-break:keep-all}
 .ch.sel{color:var(--mint);border-color:var(--mint)}
-.ch.sel::before{content:"▶";position:absolute;left:9px;font-size:9px;top:50%;transform:translateY(-50%)}
+.ch.sel::before{content:"▶";position:absolute;left:9px;top:7px;font-family:var(--ui);font-size:12px;line-height:22px}
 .ch:focus-visible{outline:1px solid var(--mint)}
 #timer{height:1px;background:var(--moss)}
 #timer i{display:block;height:1px;background:var(--line);width:100%}
@@ -50,17 +56,17 @@ body{background:var(--ink);color:var(--paper);font-family:var(--ui);overflow:hid
   background:rgba(7,10,10,.86);padding-block:20px;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));overflow:auto}
 .ov>div{width:min(560px,100%);margin:0 auto;display:flex;flex-direction:column;gap:14px}
-.ov h1{font-family:var(--prose);font-weight:800;font-size:clamp(44px,8vw,84px);margin:0;letter-spacing:.06em;line-height:1}
-.ov h1 small{display:block;font-family:var(--ui);font-weight:400;font-size:11px;letter-spacing:.6em;color:var(--line);margin-top:10px}
-.ov h2{font-family:var(--prose);font-size:clamp(22px,3.4vw,34px);margin:0}
-.ov p,.ov li{font-family:var(--prose);font-size:clamp(13px,1.5vw,16px);line-height:1.8;margin:0;word-break:keep-all;color:var(--paper)}
+.ov h1{font-family:var(--prose);font-weight:400;font-size:60px;margin:0;letter-spacing:4px;line-height:1}
+.ov h1 small{display:block;font-family:var(--ui);font-weight:400;font-size:12px;letter-spacing:7px;color:var(--line);margin-top:12px}
+.ov h2{font-family:var(--prose);font-weight:400;font-size:30px;line-height:1.2;margin:0}
+.ov p,.ov li{font-family:var(--prose);font-size:15px;line-height:26px;margin:0;word-break:keep-all;color:var(--paper)}
 .ov ul{margin:0;padding:0;list-style:none;border-top:1px solid var(--moss);border-bottom:1px solid var(--moss);padding-block:10px}
-.ov .dim{color:var(--line);font-family:var(--ui);font-size:12px;letter-spacing:.04em}
+.ov .dim{color:var(--line);font-family:var(--ui);font-size:12px;line-height:18px;letter-spacing:0}
 .ov .num{font-variant-numeric:tabular-nums}
-.go{align-self:flex-start;font-family:var(--prose);font-size:16px;color:var(--mint);background:transparent;
+.go{align-self:flex-start;font-family:var(--prose);font-size:15px;color:var(--mint);background:transparent;
   border:1px solid var(--mint);padding:9px 22px;cursor:pointer}
 .go:hover,.go:focus-visible{background:var(--mint);color:var(--ink);outline:none}
-#mute{position:absolute;top:calc(8px + env(safe-area-inset-top,0px));right:max(10px,env(safe-area-inset-right,0px));z-index:5;font:inherit;font-size:11px;letter-spacing:.1em;
+#mute{position:absolute;top:calc(8px + env(safe-area-inset-top,0px));right:max(10px,env(safe-area-inset-right,0px));z-index:5;font:inherit;font-size:12px;letter-spacing:1px;
   color:var(--line);background:transparent;border:1px solid var(--moss);padding:3px 8px;cursor:pointer}
 @media (max-aspect-ratio:1/1){
   #app{justify-content:flex-start}
@@ -68,8 +74,8 @@ body{background:var(--ink);color:var(--paper);font-family:var(--ui);overflow:hid
   #ui{position:static;flex-direction:column;align-items:stretch;padding-block:16px 14px;flex:1}
   #side{flex:0 0 auto}
   #dlg{flex:0 0 auto;min-height:150px}
-  #text{font-size:16px}.ch{font-size:15px;padding-block:11px}
-  #obs button{font-size:12px;padding:9px 4px}
+  .ch{padding-block:11px}.ch.sel::before{top:11px}
+  #obs button{padding:9px 4px}
   .ov{position:fixed}
 }
 @media (prefers-reduced-motion:reduce){#next{animation:none}}
@@ -295,13 +301,13 @@ function drawNavi(){const n=S.navi,g=Math.min(1,n.glitch+(S.san<40?(40-S.san)/90
     const x=bx+(sx-bx)*tw*s,y=by+(sy-by)*tw*s;i?nv.lineTo(x,y):nv.moveTo(x,y)}nv.stroke();
   if(!n.noArrow){nv.fillStyle='#6ff0b4';nv.strokeStyle='#0b1f1c';nv.lineWidth=3;nv.beginPath();nv.moveTo(170,132);nv.lineTo(186,166);nv.lineTo(170,158);nv.lineTo(154,166);nv.closePath();nv.stroke();nv.fill()}
   nv.restore();
-  nv.fillStyle='#0b1f1c';nv.fillRect(8,8,168,58);nv.fillStyle='#2f8f6c';nv.font='500 13px sans-serif';nv.fillText('목적지',16,26);
-  nv.fillStyle='#6ff0b4';nv.font='bold 26px sans-serif';nv.fillText(garble(n.dest,g*.5),16,56,156);
-  nv.fillStyle='#0b1f1c';nv.fillRect(8,134,120,40);nv.fillStyle='#6ff0b4';nv.font='bold 28px sans-serif';nv.fillText(n.dist.toFixed(1)+' km',14,165);
+  nv.fillStyle='#0b1f1c';nv.fillRect(8,8,168,58);nv.fillStyle='#2f8f6c';nv.font='12px Galmuri11,sans-serif';nv.fillText('목적지',16,26);
+  nv.fillStyle='#6ff0b4';nv.font='bold 24px Galmuri11,sans-serif';nv.fillText(garble(n.dest,g*.5),16,56,156);
+  nv.fillStyle='#0b1f1c';nv.fillRect(8,134,120,40);nv.fillStyle='#6ff0b4';nv.font='bold 24px Galmuri11,sans-serif';nv.fillText(n.dist.toFixed(1)+' km',14,165);
   if(g>.05)for(let i=0;i<g*8;i++){const y=Math.random()*170|0,hh=4+Math.random()*12|0;nv.drawImage(nvC,0,y,320,hh,(Math.random()-.5)*60*g,y,320,hh)}
   nvT.needsUpdate=true}
-function drawMeter(){mt.fillStyle='#070a0a';mt.fillRect(0,0,128,64);mt.fillStyle='#9a2f2a';mt.font='14px sans-serif';mt.fillText('요금',8,20);
-  mt.font='bold 30px monospace';mt.textAlign='right';mt.fillText(Math.max(0,S.meter).toLocaleString(),120,52);mt.textAlign='left';mtT.needsUpdate=true}
+function drawMeter(){mt.fillStyle='#070a0a';mt.fillRect(0,0,128,64);mt.fillStyle='#9a2f2a';mt.font='12px Galmuri11,sans-serif';mt.fillText('요금',8,20);
+  mt.font='bold 24px Galmuri11,monospace';mt.textAlign='right';mt.fillText(Math.max(0,S.meter).toLocaleString(),120,52);mt.textAlign='left';mtT.needsUpdate=true}
 function drawRain(){rn.clearRect(0,0,128,48);rn.fillStyle='rgba(107,125,115,.9)';for(let i=0;i<34;i++){const x=Math.random()*128,y=Math.random()*48;
   const wx=64+(-.1/1.5)*128,ang=Math.atan2(x-wx,48-y)*-1;if(Math.abs(ang-S.wipeA)<.35&&S.wipe>0)continue;rn.fillRect(x|0,y|0,1,2+Math.random()*5|0)}rnT.needsUpdate=true}
 S.wipeA=0;
