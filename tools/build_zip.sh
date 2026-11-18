@@ -22,7 +22,7 @@ html=('<!doctype html>\n<html lang="ko" style="height:100%">\n<head>\n<meta char
  '<style>body{margin:0;font-size:14px}[hidden]{display:none!important}</style>\n</head>\n<body>\n'+s+'\n</body>\n</html>\n')
 open(out+'/막차.html','w',encoding='utf8').write(html)
 open(out+'/읽어주세요.txt','w',encoding='utf8').write(
- '막차 (LAST RIDE)\n\n실행: "막차.html"을 더블클릭하면 브라우저(Safari, Chrome)에서 열립니다.\n'
+ '막차: 심야괴담택시 (LAST RIDE)\n\n실행: "막차.html"을 더블클릭하면 브라우저(Safari, Chrome)에서 열립니다.\n'
  '설치는 필요 없고, 인터넷 없이도 됩니다. 두 파일(막차.html, three.min.js)은 같은 폴더에 두세요.\n\n'
  '조작: 클릭으로 진행 / 위아래 방향키와 Enter로 선택 / 1~4로 룸미러, 사이드미러, 네비, 뒷좌석 보기\n'
  '소리를 켜고 하는 것을 권합니다.\n')
