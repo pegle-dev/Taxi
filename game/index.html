@@ -1,4 +1,5 @@
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>막차: 심야괴담택시</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <style>
@@ -64,6 +65,13 @@ body{background:var(--ink);color:var(--paper);font-family:var(--ui);font-size:12
 .ch.sel{color:var(--mint);border-color:var(--mint)}
 .ch.sel::before{content:"▶";position:absolute;left:9px;top:7px;font-family:var(--ui);font-size:12px;line-height:22px}
 .ch:focus-visible{outline:1px solid var(--mint)}
+.ch.gl{color:var(--red);border-color:var(--red);transform:translateX(2px);text-shadow:-2px 0 var(--mint-dim)}
+#ring{position:absolute;top:calc(8px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);padding:3px 10px;background:rgba(7,10,10,.82);
+  border:1px solid var(--mint);color:var(--mint);font-size:12px;line-height:15px;letter-spacing:1px;white-space:nowrap;animation:blink .5s steps(2) infinite;pointer-events:none}
+#no{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:6}
+#no.full{background:var(--ink)}
+#no span{position:absolute;white-space:nowrap;line-height:1;color:var(--paper)}
+#no span.r{color:var(--red)}
 #timer{height:1px;background:var(--moss)}
 #timer i{display:block;height:1px;background:var(--line);width:100%}
 .ov{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;gap:18px;
@@ -93,12 +101,32 @@ body{background:var(--ink);color:var(--paper);font-family:var(--ui);font-size:12
   #obs button{padding:9px 4px}
   .ov{position:fixed}
 }
+/* 넓은 화면에서는 옛날 게임처럼 글자를 2배로. 본문도 Galmuri11(12px의 배수)로 바꿔 24px에서 또렷하게 */
+@media (min-width:900px) and (min-height:540px){
+  #dlg{padding:22px 24px 20px;min-height:136px}
+  #text{font-family:var(--ui);font-size:24px;line-height:38px}
+  #text.said{font-weight:700;text-shadow:none}
+  #who{font-size:24px;line-height:28px;top:-18px;padding:1px 12px}
+  #next{font-size:24px;right:14px;bottom:8px}
+  #side{flex-basis:min(42%,440px);gap:8px}
+  #obs button{font-size:24px;line-height:28px;padding:5px 4px}
+  .ch{font-family:var(--ui);font-size:24px;line-height:32px;padding:8px 12px 8px 38px}
+  .ch.sel::before{font-size:24px;line-height:32px;top:8px;left:8px}
+  #sanst,#ring,#mute{font-size:24px;line-height:28px;padding:4px 10px}
+  #sanst{gap:10px}#sanst .bar{gap:2px}#sanst .bar i{width:9px;height:18px}#sanst .num{min-width:38px}
+  .ov p,.ov li,.go{font-family:var(--ui);font-size:24px;line-height:38px}
+  .ov h2{font-family:var(--ui);font-size:48px;line-height:56px}
+  .ov .dim{font-size:12px;line-height:18px}
+  .ov>div{width:min(760px,100%)}
+}
 @media (prefers-reduced-motion:reduce){#next,#sanst .bar i.on,#sanst.hit{animation:none}}
 </style>
 
 <div id="app"><div id="stage">
   <canvas id="c" width="480" height="270"></canvas>
   <div id="sanst" hidden role="status" aria-label="정신력 100"><span>정신력</span><span class="bar"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="num">100</span></div>
+  <div id="ring" hidden>전화 · 배차실</div>
+  <div id="no" hidden></div>
   <button id="mute" type="button">소리 켬</button>
   <div id="ui" class="off">
     <div id="dlg"><span id="who"></span><p id="text"></p><i id="next">▼</i></div>
@@ -113,7 +141,7 @@ body{background:var(--ink);color:var(--paper);font-family:var(--ui);font-size:12
       <li>셋. 눈을 뗄 수 있는 것은 한 번에 한 곳뿐이다.</li>
       <li>넷. 도착하면, 도착을 알린다.</li>
     </ul>
-    <p class="dim" id="best">하룻밤 손님 셋 · 약 5분 · 소리를 켜는 것을 권합니다</p>
+    <p class="dim" id="best">하룻밤 손님 셋과 마지막 콜 · 약 7분 · 소리를 켜는 것을 권합니다</p>
     <button class="go" id="start" type="button">시동을 건다</button>
   </div></div>
 </div></div>
@@ -200,6 +228,12 @@ const rnC=document.createElement('canvas');rnC.width=128;rnC.height=48;const rn=
 const rnT=new THREE.CanvasTexture(rnC);rnT.magFilter=THREE.NearestFilter;
 const glass=new THREE.Mesh(new THREE.PlaneGeometry(1.5,.6),new THREE.MeshBasicMaterial({map:rnT,transparent:true,depthWrite:false,fog:false}));
 glass.position.set(0,1.27,-1.22);glass.rotation.x=-.5;car.add(glass);
+// 양옆 창 비: 달릴수록 빗줄기가 뒤쪽으로 눕는다
+const rsC=document.createElement('canvas');rsC.width=160;rsC.height=32;const rs=rsC.getContext('2d');
+const rsT=new THREE.CanvasTexture(rsC);rsT.magFilter=THREE.NearestFilter;
+const sideGlass=[];
+for(const s of[-1,1]){const g=new THREE.Mesh(new THREE.PlaneGeometry(2.5,.5),new THREE.MeshBasicMaterial({map:rsT,transparent:true,depthWrite:false,fog:false,side:THREE.DoubleSide}));
+  g.position.set(s*.85,1.26,.22);g.rotation.y=Math.PI/2;car.add(g);sideGlass.push(g)}
 const wiper=new THREE.Group();wiper.position.set(-.1,1.02,-1.36);wiper.rotation.x=-.5;car.add(wiper);box(.02,.56,.012,0x0b100f,0,.28,0,wiper);
 
 // 사람 / 귀신
@@ -237,7 +271,7 @@ const driver=figure({top:0x34463f,skin:0xb9a58a,hair:0x101a1f,hands:[[-.14,.44,-
   const c=new THREE.Mesh(new THREE.CylinderGeometry(.108,.115,.07,6),M(0x101a1f));c.position.y=.1;hd.add(c);box(.18,.015,.1,0x101a1f,0,.07,-.13,hd);
   box(.07,.02,.01,0x7a6a58,0,-.075,ez+.008,hd)}});
 driver.position.set(-.38,.57,.16);
-for(const s of[-1,1]){box(.07,.06,.08,0xb9a58a,-.38+s*.165,1.015,-.69,car);limb([-.38+s*.17,1.0,-.66],[-.38+s*.24,.86,-.2],.08,0x34463f,car)}
+const myHands=[];for(const s of[-1,1])myHands.push(box(.07,.06,.08,0xb9a58a,-.38+s*.165,1.015,-.69,car),limb([-.38+s*.17,1.0,-.66],[-.38+s*.24,.86,-.2],.08,0x34463f,car));
 const seat=new THREE.Group();seat.position.set(-.3,.57,1.04);car.add(seat);
 const MODELS={
   wet:()=>figure({ghost:1,long:1,leg:.55,thin:.85}),
@@ -265,6 +299,16 @@ const rig=new THREE.Group();cam.add(rig);rig.visible=false;
   const hair=new THREE.Group();rig.add(hair);rig.userData.hair=hair;
   const hm=B(0x000000);box(.36,.1,.2,hm,0,.19,0,hair);for(let i=0;i<7;i++)box(rnd(.02,.05),rnd(.3,.6),.02,hm,-.17+i*.057+rnd(-.01,.01),-.05-rnd(0,.1),-.06+rnd(-.02,.02),hair);
   const sl=new THREE.PointLight(0xffffff,0,2);sl.position.set(0,.1,.3);rig.add(sl);rig.userData.light=sl;}
+
+// 갑자기 나타나는 것들: 도로 위의 사람, 창밖의 얼굴, 조수석의 것, 앞유리의 손
+const walker=figure({ghost:1,tall:1.25,arm:1.5,neck:.3,eye:.03});walker.rotation.y=Math.PI;walker.visible=false;scene.add(walker);
+const wface=new THREE.Group();{const h=new THREE.Mesh(new THREE.IcosahedronGeometry(.14,0),GHOST);h.scale.set(.95,1.25,.5);wface.add(h);
+  for(const s of[-1,1])box(.034,.034,.02,EYE,s*.055,.03,.075,wface);box(.06,.11,.02,B(0x000000),0,-.085,.07,wface);box(.3,.5,.12,GHOST,0,-.42,-.04,wface)}
+wface.position.set(-.95,1.31,-.92);wface.visible=false;scene.add(wface);
+const appa=figure({ghost:1,tall:1.2,neck:-.45,neckLen:1.5,flat:1,eye:.022,arm:1.5});appa.position.set(.42,.5,-.5);appa.rotation.y=1.25;appa.visible=false;car.add(appa);
+const slap=new THREE.Group();{const hm=B(0xc9d2c4);box(.1,.1,.012,hm,0,0,0,slap);for(let i=0;i<4;i++)box(.02,.085+(i%3?.015:0),.012,hm,-.039+i*.026,.095,0,slap);box(.022,.07,.012,hm,-.07,.02,0,slap).rotation.z=.7}
+slap.visible=false;car.add(slap);
+function ghostHands(){myHands.forEach(m=>{m.material=GHOST})}
 
 // 바깥
 box(11,.02,240,0x0d1517,0,0,-60);
@@ -294,7 +338,7 @@ void main(){vec2 px=vec2(1./480.,1./270.);vec3 c=texture2D(t,v).rgb;c.r=mix(c.r,
 const pScene=new THREE.Scene(),pCam=new THREE.OrthographicCamera(-1,1,1,-1,0,1);pScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2,2),post));
 
 /* ───────────── 상태 ───────────── */
-const S={doom:0,san:100,fare:0,charm:false,speed:0,target:0,flash:0,view:'main',navi:{dest:'',dist:0,twist:0,glitch:0,off:false,noArrow:false},meter:0,meterDir:1,scareT:-1,shake:0,dark:1,wipe:0};
+const S={doom:0,san:100,fare:0,charm:false,speed:0,target:0,flash:0,view:'main',navi:{dest:'',dist:0,twist:0,glitch:0,off:false,noArrow:false},meter:0,meterDir:1,scareT:-1,shake:0,dark:1,wipe:0,haunt:20,blink:0,ghost:false,quiet:false,night:1};
 const VIEWS={
   main:{p:[-.3,1.27,.1],t:[-.08,1.13,-1.0],f:70},
   navi:{p:[.06,1.15,-.5],t:[.06,1.11,-.9],f:44},
@@ -326,6 +370,8 @@ function drawMeter(){mt.fillStyle='#070a0a';mt.fillRect(0,0,128,64);mt.fillStyle
   mt.font='bold 24px Galmuri11,monospace';mt.textAlign='right';mt.fillText(Math.max(0,S.meter).toLocaleString(),120,52);mt.textAlign='left';mtT.needsUpdate=true}
 function drawRain(){rn.clearRect(0,0,128,48);rn.fillStyle='rgba(107,125,115,.9)';for(let i=0;i<34;i++){const x=Math.random()*128,y=Math.random()*48;
   const wx=64+(-.1/1.5)*128,ang=Math.atan2(x-wx,48-y)*-1;if(Math.abs(ang-S.wipeA)<.35&&S.wipe>0)continue;rn.fillRect(x|0,y|0,1,2+Math.random()*5|0)}rnT.needsUpdate=true}
+function drawSideRain(){rs.clearRect(0,0,160,32);rs.fillStyle='rgba(107,125,115,.8)';const k=Math.min(1.4,S.speed/6);
+  for(let i=0;i<46;i++){let x=Math.random()*170,y=Math.random()*32;const n=3+Math.random()*6|0;for(let j=0;j<n;j++)rs.fillRect(x-j*k|0,y+j|0,1,1)}rsT.needsUpdate=true}
 S.wipeA=0;
 
 /* ───────────── 소리 ───────────── */
@@ -338,7 +384,11 @@ function env(g,t0,a,pk,dec){g.gain.setValueAtTime(0.0001,t0);g.gain.linearRampTo
 function nburst(freq,pk,dec,type='lowpass',delay=0){if(!A.ctx)return;const c=A.ctx,s=c.createBufferSource();s.buffer=A.noise;const f=c.createBiquadFilter();f.type=type;f.frequency.value=freq;const g=c.createGain();env(g,c.currentTime+delay,.01,pk,dec);s.connect(f).connect(g).connect(A.master);s.start(c.currentTime+delay);s.stop(c.currentTime+delay+dec+.2)}
 function tone(fr,pk,dec,type='sine',delay=0,bend=0){if(!A.ctx)return;const c=A.ctx,o=c.createOscillator();o.type=type;o.frequency.value=fr;if(bend)o.frequency.linearRampToValueAtTime(fr+bend,c.currentTime+delay+dec);const g=c.createGain();env(g,c.currentTime+delay,.008,pk,dec);o.connect(g).connect(A.master);o.start(c.currentTime+delay);o.stop(c.currentTime+delay+dec+.1)}
 const sfx={thunder(){nburst(160,.55,2.2,'lowpass',.25);nburst(60,.5,2.8,'lowpass',.4)},
-  sting(){nburst(3200,.6,.5,'highpass');nburst(500,.7,.9);[196,208,277,415,622].forEach((f,i)=>tone(f*(i%2?1:.5),.22,1.1,'sawtooth',0,-f*.25));tone(1900,.2,.6,'square',0,400)},
+  sting(v=1){nburst(3200,.6*v,.5,'highpass');nburst(500,.7*v,.9);[196,208,277,415,622].forEach((f,i)=>tone(f*(i%2?1:.5),.22*v,1.1,'sawtooth',0,-f*.25));tone(1900,.2*v,.6,'square',0,400);tone(55,.5*v,1.3,'sawtooth',0,-20)},
+  ring(){for(const k of[0,1]){tone(1480,.06,.36,'square',k*.48);tone(1865,.045,.36,'square',k*.48)}},
+  bang(){nburst(900,.9,.12);nburst(140,.8,.3);tone(84,.5,.22,'sine')},
+  crash(v=1){nburst(220,v,.7);nburst(4200,.5*v,.25,'highpass');tone(42,.8*v,.6,'sine',0,-14)},
+  tick(f){tone(f,.07,.05,'square')},
   chime(bad){tone(880,.06,.25);tone(bad?932:1174,.06,.4,'sine',.16,bad?-200:0)},
   thump(){tone(52,.3,.16,'sine');tone(48,.22,.16,'sine',.24)},
   door(){nburst(220,.35,.18);tone(70,.2,.12,'sine')},
@@ -349,6 +399,15 @@ let hbT=0;
 /* ───────────── 루프 ───────────── */
 let last=performance.now(),tN=0,tR=0,nextBolt=rnd(9,18),nextWipe=3;
 function lightning(n=1){S.flash=Math.max(S.flash,rnd(.14,.28));sfx.thunder();if(n>1)setTimeout(()=>{S.flash=.12},260)}
+// 예고 없이 일어나는 일들. 대화를 멈추지 않고 화면 안에서만 지나간다. 이걸로는 죽지 않는다(정신력 1에서 멈춤).
+function hit(d){S.san=Math.max(1,S.san-d);setSan()}
+function roadFigure(kid,onHit,z){walker.scale.setScalar(kid?.62:1.15);walker.position.set(-.38,kid?.74:.7,z||-46);walker.userData.v=kid?26:20;walker.userData.lit=0;
+  walker.userData.hit=onHit||(()=>{sfx.crash(.6);S.shake=.4;S.dark=0;setTimeout(()=>{S.dark=1},110);hit(5)});walker.visible=true}
+function slapHand(){const u=slap.userData;u.x=rnd(-.6,-.12);u.dy=rnd(-.02,.14);u.t=2.8;slap.rotation.set(-.5,0,rnd(-.4,.4));slap.visible=true;sfx.bang();S.shake=.22;hit(4)}
+function apparition(k){S[k]=true;wface.lookAt(cam.position);S.flash=.4;sfx.thunder();hit(3)}
+function haunt(){const r=Math.random();
+  if(r<.28&&S.speed>6)roadFigure(Math.random()<.35);else if(r<.52)apparition('apFace');else if(r<.72)apparition('apSeat');
+  else if(r<.88||S.san>=60)slapHand();else{S.blink=.13;sfx.sting(.45);hit(4)}}
 function frame(now){requestAnimationFrame(frame);const dt=Math.min(.05,(now-last)/1000);last=now;const T=now/1000;
   S.speed+=(S.target-S.speed)*Math.min(1,dt*1.2);if(A.eng)A.eng.gain.value=.03+.05*(S.speed/15);
   for(const m of movers){m.position.z+=S.speed*dt;if(m.position.z>46)m.position.z-=206}
@@ -356,10 +415,15 @@ function frame(now){requestAnimationFrame(frame);const dt=Math.min(.05,(now-last
   sweep.position.set(near.position.x-near.userData.s*1.4,4.9,near.position.z);sweep.intensity=Math.max(0,1.25-nd/9);
   // 번개
   nextBolt-=dt;if(nextBolt<0&&S.speed>4&&S.scareT<0){nextBolt=rnd(11,24);lightning()}
-  if(S.flash>0)S.flash-=dt;const fl=S.flash>0||S.scareT>=0;flashL.intensity=fl?.7:0;flashL2.intensity=fl?.45:0;post.uniforms.flash.value=fl?1:0;
+  if(S.flash>0)S.flash-=dt;const fl=S.flash>0||S.scareT>=0||S.blink>0;flashL.intensity=fl?.7:0;flashL2.intensity=fl?.45:0;post.uniforms.flash.value=fl?1:0;
+  // 갑작스러운 것들
+  if(S.started&&!S.quiet&&S.scareT<0){S.haunt-=dt;if(S.haunt<0){S.haunt=rnd(15,30)*(S.ghost?1:1.7);haunt()}}
+  if(walker.visible){walker.position.z+=(S.speed+walker.userData.v)*dt;if(walker.position.z>-9&&!walker.userData.lit){walker.userData.lit=1;S.flash=Math.max(S.flash,.22)}if(walker.position.z>-1.5){walker.visible=false;walker.userData.hit()}}
+  if(slap.visible){const u=slap.userData;u.t-=dt;if(u.t<1.2)u.dy-=dt*.25;slap.position.set(u.x,1.264+.878*u.dy,-1.2305-.479*u.dy);if(u.t<0)slap.visible=false}
+  wface.visible=!!S.apFace&&S.flash>0;appa.visible=!!S.apSeat&&S.flash>0;if(S.flash<=0)S.apFace=S.apSeat=false;
   // 와이퍼
   nextWipe-=dt;if(nextWipe<0){nextWipe=2.6;S.wipe=1;sfx.wipe()}if(S.wipe>0){S.wipe-=dt*1.3}S.wipeA=Math.sin(Math.max(0,S.wipe)*Math.PI)*1.25;wiper.rotation.z=-1.15+S.wipeA*1.6;
-  tR+=dt;if(tR>.09){tR=0;drawRain()}tN+=dt;if(tN>.16){tN=0;drawNavi();drawMeter()}
+  tR+=dt;if(tR>.09){tR=0;drawRain();drawSideRain()}sideGlass[0].material.opacity=S.view==='side'?.22:1;tN+=dt;if(tN>.16){tN=0;drawNavi();drawMeter()}
   wheel.rotation.z=Math.sin(T*.7)*.06;
   if(passenger&&passenger.userData.head){const hd=passenger.userData.head;hd.rotation.y=Math.sin(T*.23)*.04;if(passenger.userData.gh){const z=-Math.min(.55,S.doom*.2);passenger.position.z+=(z-passenger.position.z)*dt*.6;passenger.rotation.x=passenger.position.z*.5}}
   
@@ -371,6 +435,7 @@ function frame(now){requestAnimationFrame(frame);const dt=Math.min(.05,(now-last
   // 스케어
   if(S.scareT>=0){S.scareT+=dt;const u=Math.min(1,S.scareT/.16);rig.position.set(REDUCED?0:rnd(-.012,.012),-.02+(REDUCED?0:rnd(-.012,.012)),-1.2+u*.72);
     rig.rotation.y=Math.PI;rig.rotation.z=.25*Math.sin(S.scareT*40)*(REDUCED?0:1)+.2;rig.userData.mouth.scale.y=1+u*1.3;}
+  if(S.blink>0&&S.scareT<0){S.blink-=dt;rig.visible=S.blink>0;rig.position.set(0,-.03,-.46);rig.rotation.set(0,Math.PI,.2);rig.userData.hair.visible=true}
   // 정신력 → 색이 빠진다
   const u=post.uniforms;u.count.value=S.san>75?12:S.san>55?11:S.san>40?10:S.san>25?9:8;u.noise.value=.02+(100-S.san)*.0016;u.ab.value=S.san<45?Math.round((45-S.san)/15)+(Math.random()<.04?3:0):0;u.time.value=T%10;u.dark.value=S.dark;
   if(S.san<40&&S.started){hbT-=dt;if(hbT<0){hbT=S.san<20?.7:1.05;sfx.thump()}}
@@ -402,24 +467,30 @@ function setSan(){const v=Math.max(0,Math.round(S.san)),n=Math.ceil(v/10);elSegs
   if(v<lastSan){elSt.classList.remove('hit');void elSt.offsetWidth;elSt.classList.add('hit')}lastSan=v}
 class Dead extends Error{}
 async function san(d){if(!d)return;if(d<=-12&&S.charm){S.charm=false;charm.visible=false;sfx.chime(true);await narr('룸미러에 걸린 부적이 귀퉁이부터 검게 탄다.\n방금 그것은, 당신에게 닿지 못했다.');return}
-  S.san=Math.max(0,Math.min(100,S.san+d));setSan();if(d<=-8)S.shake=.25;if(S.san<=0)throw new Dead()}
-async function scare(kind){ui.classList.add('off');sfx.duck(1);await sleep(REDUCED?150:520);
+  if(d<0)d=Math.round(d*1.7);S.san=Math.max(0,Math.min(100,S.san+d));setSan();if(d<=-8)S.shake=.25;if(S.san<=0)throw new Dead()}
+async function scare(kind){ui.classList.add('off');sfx.duck(1);await sleep(REDUCED?150:rnd(60,900));
   rig.userData.hair.visible=kind!=='black'&&kind!=='child';rig.scale.setScalar(kind==='child'?.8:1);
   rig.visible=true;S.scareT=0;S.shake=.6;sfx.sting();await sleep(680);rig.visible=false;S.scareT=-1;rig.userData.light.intensity=0;S.dark=0;await sleep(380);S.dark=1;sfx.duck(0);ui.classList.remove('off')}
 
 const OBS=[['mirror','룸미러'],['side','사이드미러'],['navi','네비'],['back','뒷좌석']];
+const TLIM=16,FORCED='입이 먼저 움직였다.\n방금 대답한 것은 당신의 목소리다. 당신은 아니다.';
 function choose(beat,ctx){return new Promise(resolve=>{
-  const opts=[...beat.choices,{t:'…… (침묵한다)',...beat.silence,silent:true}];let sel=0,looked=false,left=22,paused=false,done=false;
+  const opts=[...beat.choices,{t:'…… (침묵한다)',...beat.silence,silent:true}];let sel=0,looked=false,left=TLIM,paused=false,done=false;
+  // 정신이 맑을 때는 위험한 대답이 지직거린다. 흐려지면 경고가 사라지고, 더 흐려지면 아무 대답이나 지직거린다.
+  const dz=o=>o.doom>0||o.san<=-10||!!o.scare,warn=S.san>=50?opts.map(dz):S.san<30?opts.map(()=>Math.random()<.5):opts.map(()=>false);let gl=0;
   elSide.innerHTML='';const ob=document.createElement('div');ob.id='obs';
   OBS.forEach(([k,n],i)=>{const b=document.createElement('button');b.type='button';b.textContent=n;b.onclick=()=>ctl.obs(i);ob.append(b)});
-  const tm=document.createElement('div');tm.id='timer';tm.innerHTML='<i></i>';elSide.append(ob);
+  const tm=document.createElement('div');tm.id='timer';tm.innerHTML='<i></i>';if(!beat.noObs)elSide.append(ob);
   const btns=opts.map((o,i)=>{const b=document.createElement('button');b.type='button';b.className='ch';b.textContent=o.t;
     b.onmouseenter=()=>{sel=i;paint()};b.onclick=()=>{sel=i;paint();ctl.pick()};elSide.append(b);return b});elSide.append(tm);
   const paint=()=>btns.forEach((b,i)=>b.classList.toggle('sel',i===sel));paint();
-  const iv=setInterval(()=>{if(paused||done)return;left-=.1;tm.firstChild.style.width=Math.max(0,left/22*100)+'%';if(left<=0){sel=opts.length-1;ctl.pick()}},100);
+  const iv=setInterval(()=>{if(paused||done)return;left-=.1;tm.firstChild.style.width=Math.max(0,left/TLIM*100)+'%';
+    if(gl>0){if(!--gl)btns.forEach((b,i)=>{b.textContent=opts[i].t;b.classList.remove('gl')})}
+    else if(Math.random()<.05){gl=3;btns.forEach((b,i)=>{if(warn[i]){b.textContent=garble(opts[i].t,.3);b.classList.add('gl')}})}
+    if(left<=0){if(S.san<50){sel=Math.random()*beat.choices.length|0;opts[sel]={...opts[sel],forced:true}}else sel=opts.length-1;ctl.pick()}},100);
   const ctl=choiceCtl={move(d){sel=(sel+d+opts.length)%opts.length;paint()},
     pick(){if(done||paused)return;done=true;clearInterval(iv);choiceCtl=null;elSide.innerHTML='';resolve(opts[sel])},
-    async obs(i){if(looked||paused||done)return;looked=true;paused=true;choiceCtl=null;[...ob.children].forEach(b=>b.disabled=true);elSide.hidden=true;
+    async obs(i){if(beat.noObs||looked||paused||done)return;looked=true;paused=true;choiceCtl=null;[...ob.children].forEach(b=>b.disabled=true);elSide.hidden=true;
       try{await ctx.observe(OBS[i][0])}catch(e){done=true;clearInterval(iv);elSide.innerHTML='';elSide.hidden=false;return ctx.fail(e)}
       elSide.hidden=false;if(beat.say)await showStatic(beat.say);paused=false;choiceCtl=ctl}};
 })}
@@ -557,7 +628,7 @@ const RADIO=['무전기가 지직거린다.\n"14호차. 다음 콜입니다. 손
 
 /* ───────────── 진행 ───────────── */
 let clock=0;const hhmm=()=>{const m=clock%1440;return String(m/60|0).padStart(2,'0')+':'+String(m%60).padStart(2,'0')};
-async function ride(key){const p=P[key];let doom=0,looks={};S.doom=0;S.meter=3800;S.meterDir=p.meterBack?-1:1;
+async function ride(key,o={}){const p=P[key];let doom=0,looks={};S.doom=0;S.ghost=!!p.ghost;S.meter=3800;S.meterDir=p.meterBack?-1:1;
   Object.assign(S.navi,{dest:p.dest,dist:p.dist,twist:0,glitch:0,off:false,noArrow:false});
   S.target=0;await narr(`— ${hhmm()} —`);sfx.door();setPassenger(p.model);roadGhost.visible=!!p.side;sfx.chime(p.ghost);
   await narr(p.intro);S.target=14;
@@ -565,6 +636,7 @@ async function ride(key){const p=P[key];let doom=0,looks={};S.doom=0;S.meter=380
     const r=p.obs[kind](ctx.i,n,ctx.beat);if(r.flash)lightning();if(r.scare)await scare(p.model);await narr(r.t);doom+=r.doom||0;S.doom=doom;setView('main');await san(r.san)}};
   let flag=0,paid=true;
   for(let i=0;i<p.beats.length;i++){const b=p.beats[i];ctx.beat=b;ctx.i=i;clock+=7+(Math.random()*5|0);
+    if(o.phone&&i===1){doom+=await phone(p);S.doom=doom}
     if(b.navi){Object.assign(S.navi,b.navi);sfx.chime(true)}else S.navi.dist=Math.max(.1,S.navi.dist*.62);
     if(b.stop)S.target=0;if(b.flash)lightning(b.flash);
     await narr(b.text);if(b.auto)await san(b.auto);
@@ -572,6 +644,7 @@ async function ride(key){const p=P[key];let doom=0,looks={};S.doom=0;S.meter=380
       for(const ch of l.t){if(skip){elText.textContent=l.t;break}elText.textContent+=ch;await sleep(30)}typing=false}
     else elNext.hidden=true;
     const c=await new Promise((res,rej)=>{ctx.fail=rej;choose(b,ctx).then(res)});
+    if(c.forced)await narr(FORCED);
     doom+=c.doom||0;S.doom=doom;flag+=c.flag||0;if(c.navi)Object.assign(S.navi,c.navi);if(c.fn)c.fn();if(c.view)setView(c.view);if(c.flash)lightning();
     if(c.scare)await scare(p.model);await narr(c.out);setView('main');await san(c.san);
     if(c.charm){if(flag>=0){S.charm=true;charm.visible=true;paid=false}else{await narr('종이에는 아무 글씨도 없다. 거짓말한 입에는 빈 종이를 준다고, 그녀가 말한다.');paid=false}}
@@ -580,27 +653,82 @@ async function ride(key){const p=P[key];let doom=0,looks={};S.doom=0;S.meter=380
   if(bad){await narr(p.bad);await san(-14)}else await narr(p.good);
   const fare=bad||!paid?0:p.fare;S.fare+=fare;S.meter=0;return {name:p.name,bad,fare,ghost:p.ghost}}
 
+// 전화: 마지막 손님을 태운 동안 한 번. 손님에게 허락을 구하면 안 된다.
+async function flood(who,model){const no=$('#no'),st=$('#stage'),w=st.clientWidth,h=st.clientHeight;no.innerHTML='';no.className='';no.hidden=false;sfx.duck(1);
+  ui.classList.remove('off');elWho.textContent=who;elText.classList.add('said');elNext.hidden=true;elText.textContent='';
+  for(let i=0;i<4;i++){elText.textContent+=(i?'\n':'')+'안돼.';sfx.tick(170-i*10);await sleep(560-i*130)}
+  const N=REDUCED?40:130;for(let i=0;i<N;i++){const e=document.createElement('span');e.textContent='안돼.';if(Math.random()<.2)e.className='r';
+    e.style.fontSize=12*2**Math.min(4,(i/(N/4)|0)+(Math.random()<.3?1:0))+'px';e.style.left=rnd(-.1,.95)*w+'px';e.style.top=rnd(-.05,.95)*h+'px';no.append(e);
+    sfx.tick(180+i*7);if(i%9===0)S.shake=.1;await sleep(Math.max(5,50-i*.7))}
+  no.classList.add('full');sfx.crash(.8);await sleep(520);no.hidden=true;no.innerHTML='';await scare(model)}
+async function phone(p){const who=p.who||(p.model==='child'?'아이':'손님'),ring=$('#ring');
+  sfx.ring();ring.hidden=false;const iv=setInterval(()=>sfx.ring(),2300);
+  try{await narr('조수석에 던져 둔 휴대전화가 울린다. 화면에는 "배차실".\n배차실은 무전으로만 연락한다. 전화가 온 적은 한 번도 없다.');elNext.hidden=true;
+    var c=await choose({noObs:1,choices:[{t:'"손님, 죄송한데 전화 좀 받아도 될까요?"',ask:1,doom:1},{t:'말없이 받는다',take:1}],silence:{t:'…… (받지 않는다)'}},null);
+  }finally{clearInterval(iv);ring.hidden=true}
+  if(c.forced)await narr(FORCED);
+  if(c.ask){await flood(who,p.model);await narr('전화는 끊겨 있다. 부재중 전화 1통.\n발신 시각은 내일 새벽이다.');await san(-12);return 1}
+  if(c.take){await narr([{who:'전화',t:'14호차. 지금 뒤에 태운 거, 콜 넣은 적 없습니다.'},{who:'전화',t:'……듣고 계시죠. 대답하지 마세요. 대답하면 그쪽이 압니다.'},
+    '끊기 직전, 수화기 너머에서 같은 벨소리가 들린다.\n배차실에서 나는 소리가 아니다. 뒷좌석에서 나는 소리다.']);await san(-3);return 0}
+  await narr('벨은 일곱 번 울리고 끊긴다. 화면에 음성 메시지 1건.\n재생하지 않았는데, 뒷좌석에서 재생되는 소리가 난다.');await san(-5);return 0}
+
+// 마지막 콜: 매일 밤 마지막에 타는 아이
+async function cut(t){ui.classList.remove('off');elWho.textContent='';elText.classList.remove('said');elNext.hidden=true;elText.textContent='';
+  for(const ch of t){elText.textContent+=ch;await sleep(/[.,]/.test(ch)?150:40)}}
+async function finale(again,log){S.quiet=true;S.target=10;
+  await narr(['무전기가 지직거린다.\n"14호차. 마지막 콜입니다. 응암동 놀이터 앞."',again?'방금 다녀온 주소다. 배차실은 같은 주소를 두 번 부르지 않는다.':'처음 받는 주소다. 그런데 핸들은 이미 그쪽으로 꺾여 있다.']);
+  clock=27*60+33;S.target=0;S.doom=0;S.meter=0;S.meterDir=0;Object.assign(S.navi,{dest:'집',dist:3.3,twist:0,glitch:0,off:false,noArrow:false});
+  await narr(`— ${hhmm()} —`);sfx.door();setPassenger('child');S.ghost=true;sfx.chime(true);
+  await narr(['응암동 놀이터 앞. 아이는 이번에도 우산이 없다.',again?'아까 내려 준 아이다. 계단을 올라가는 것까지 봤다.':'처음 보는 아이다. 그런데 아이는 당신을 처음 보는 얼굴이 아니다.',
+    {who:'아이',t:'아저씨. 오늘이 몇 번째인지 알아요?'},`${S.night}번째다.\n왜 그 숫자를 아는지, 당신은 모른다.`]);
+  S.target=14;Object.assign(S.navi,{dest:'그날',dist:0,glitch:.25});sfx.chime(true);
+  await narr(["네비가 저절로 켜진다. 목적지는 주소가 아니다.\n'그날'. 남은 거리 0.0 km.",{who:'아이',t:'그날도 비 왔잖아요. 아저씨, 졸았잖아요.'}]);
+  await cut('아니다. 당신은 졸지 않았다. 당신은 분명히 앞을 보고 있었고, 도로에는 아무도');
+  await new Promise(r=>roadFigure(true,r,-15));
+  sfx.crash(1);sfx.sting(.6);S.shake=.8;S.speed=0;S.target=0;ui.classList.add('off');S.dark=0;await sleep(1100);S.dark=1;await sleep(700);
+  await narr(['차는 멈춰 있다. 와이퍼만 움직인다.','앞유리 너머에는 아무도 없다.\n그날도 그랬다. 당신은 내려서 확인하지 않았다.',{who:'아이',t:'아저씨는 그냥 갔어요. 그래서 내가 타는 거예요. 매일 밤, 마지막에.'}]);elNext.hidden=true;
+  const c=await choose({noObs:1,choices:[{t:'"……미안하다."',sorry:1},{t:'"나는 아무도 치지 않았다."'}],silence:{t:'…… (핸들을 꽉 쥔다)'}},null);
+  if(c.forced)await narr(FORCED);
+  if(!c.sorry){await narr([{who:'아이',t:'괜찮아요. 내일 또 탈게요.'},'아이는 화난 얼굴이 아니다. 익숙한 얼굴이다.']);setPassenger(null);
+    await narr(['문은 열리지 않았는데, 뒷좌석은 비어 있다.','무전기가 지직거린다.\n"14호차. 수고하셨습니다. 내일도 같은 시간입니다."']);return 'loop'}
+  await narr({who:'아이',t:'알아요. 그 말 들으려고 탔어요.'});
+  if(log.some(r=>r.bad)){sfx.door();setPassenger(null);
+    await narr(['뒷문이 열린다. 이번에는 문 여는 소리가 나고, 발소리가 난다.\n작은 발소리가 빗속으로 멀어진다.','룸미러에는 빈 좌석. 당신은 처음으로, 다음 콜을 기다리지 않는다.']);return 'home'}
+  await narr({who:'아이',t:'근데 아저씨. 아저씨도 그날, 집에 못 갔잖아요.'});sfx.door();setPassenger(null);
+  await narr(['무슨 말인지 묻기 전에 뒷문이 닫힌다.','당신은 룸미러의 각도를 고친다. 매일 밤 첫 운행 전에 하던 대로.']);
+  setView('mirror');await sleep(500);await narr('빈 좌석이 비친다. 운전석도 비친다.\n모자와, 제복과, 그 안에 아무것도 없는 것이.');
+  setView('main');ghostHands();S.flash=.35;sfx.thunder();await sleep(600);
+  await narr(['핸들을 쥔 손이 검다.\n언제부터였는지는 미터기가 알고 있다.','회사 방침이다. 어떤 손님이라도 원하는 곳까지 태워다 준다.\n오늘의 마지막 손님은, 당신이다.']);
+  try{localStorage.setItem('makcha.ghost','1')}catch(e){}return 'last'}
+
 function lineup(){const g=['wet','child','black'],h=['drunk','shaman'];const a=g.sort(()=>Math.random()-.5).slice(0,2),b=pick(h);
   const o=[a[0],b,a[1]];if(o[0]==='black'){o[0]=o[2];o[2]='black'}return o}
-async function run(){S.san=100;S.fare=0;S.charm=false;charm.visible=false;lastSan=100;setSan();elSt.hidden=false;clock=23*60+47;S.started=true;const log=[];let dead=false;
+async function run(){let n=1;try{n=(+localStorage.getItem('makcha.nights')||0)+1;localStorage.setItem('makcha.nights',n)}catch(e){}
+  Object.assign(S,{night:n,san:100,fare:0,charm:false,quiet:false,ghost:false,haunt:rnd(18,28),started:true});charm.visible=false;setPassenger(null);roadGhost.visible=false;
+  lastSan=100;setSan();elSt.hidden=false;clock=23*60+47;const log=[],L=lineup();let dead=false,end=null;
   try{await narr(['밤 열한 시 사십칠 분. 비.\n배차실은 오늘도 손님의 이름을 알려주지 않는다.','당신은 미터기를 누르고, 룸미러의 각도를 고친다.\n아직은, 빈 좌석이 비친다.']);
-    const L=lineup();for(let i=0;i<L.length;i++){log.push(await ride(L[i]));clock+=11;if(i<L.length-1){S.target=10;await narr(RADIO[i%RADIO.length])}}
+    for(let i=0;i<L.length;i++){log.push(await ride(L[i],{phone:i===2}));clock+=11;if(i<L.length-1){S.target=10;await narr(RADIO[i%RADIO.length])}}
+    end=await finale(L.includes('child'),log);
   }catch(e){if(!(e instanceof Dead))throw e;dead=true;choiceCtl=null;elSide.innerHTML='';elSide.hidden=false;setView('main');
     await scare('black');S.target=0;await narr(['차가 멈춰 있다. 언제부터인지 모른다.','당신은 뒷좌석에 앉아 있다.\n운전석의 모자가, 천천히 이쪽으로 돌아본다.']);}
-  S.target=0;S.started=false;ui.classList.add('off');ending(log,dead)}
-function ending(log,dead){let best=0;try{best=+localStorage.getItem('makcha.best')||0;if(!dead&&S.fare>best)localStorage.setItem('makcha.best',S.fare)}catch(e){}
-  const rank=dead?'미귀환':S.san>=70?'무사 퇴근':S.san>=35?'간신히 퇴근':'퇴근은 했다';
-  const o=document.createElement('div');o.className='ov';o.innerHTML=`<div><p class="dim">${dead?'운행 중단':'— 04:00 — 운행 종료'}</p><h2>${rank}</h2>
+  S.target=0;S.started=false;ui.classList.add('off');elSt.hidden=true;ending(log,dead,end)}
+const END={last:['막차','마지막 손님을 내려 주었다. 운전석에서.',''],
+  home:['귀가','아이는 집에 갔다. 당신은 아직 운전석에 있다.','손님을 모두 무사히 내려 준 밤에는, 한 가지가 더 보인다.'],
+  loop:['내일도 운행','아이는 내일도 탄다. 당신이 기억할 때까지.','다른 대답도 있었다.']};
+function ending(log,dead,end){let best=0;try{best=+localStorage.getItem('makcha.best')||0;if(!dead&&S.fare>best)localStorage.setItem('makcha.best',S.fare)}catch(e){}
+  const E=dead?['미귀환','회사는 내일도 14호차를 내보낼 것이다. 운전사가 누구든.','']:END[end];
+  const o=document.createElement('div');o.className='ov';o.innerHTML=`<div><p class="dim">${dead?'운행 중단':'— 04:00 — 운행 종료'}</p><h2>${E[0]}</h2><p>${E[1]}</p>
    <ul>${log.map(r=>`<li>${r.name} · ${r.bad?'내려준 기억이 없다':'내려주었다'} <span class="num">${r.fare?'· '+r.fare.toLocaleString()+'원':''}</span></li>`).join('')||'<li>아무도 내려주지 못했다.</li>'}</ul>
-   <p class="num">오늘의 요금 ${S.fare.toLocaleString()}원 · 남은 정신력 ${Math.round(S.san)}</p>
-   <p class="dim">${dead?'회사는 내일도 14호차를 내보낼 것이다. 운전사가 누구든.':(S.fare>best&&S.fare?'최고 기록입니다.':'최고 기록 '+Math.max(best,S.fare).toLocaleString()+'원')}</p>
+   <p class="dim num">${S.night}번째 밤 · 요금 ${S.fare.toLocaleString()}원 · 최고 ${Math.max(best,dead?0:S.fare).toLocaleString()}원 · 남은 정신력 ${Math.round(S.san)}</p>
+   ${E[2]?`<p class="dim">${E[2]}</p>`:''}
    <button class="go" type="button">다시 운행한다</button></div>`;
-  $('#stage').append(o);o.querySelector('button').onclick=()=>{o.remove();S.san=100;setSan();run()};o.querySelector('button').focus()}
+  $('#stage').append(o);o.querySelector('button').onclick=()=>{o.remove();run()};o.querySelector('button').focus()}
 
 $('#mute').onclick=()=>{A.on=!A.on;$('#mute').textContent=A.on?'소리 켬':'소리 끔';if(A.master)A.master.gain.value=A.on?1:0};
 $('#start').onclick=()=>{audioInit();$('#title').hidden=true;run()};
-try{const b=+localStorage.getItem('makcha.best');if(b)$('#best').textContent+=' · 최고 기록 '+b.toLocaleString()+'원'}catch(e){}
-drawNavi();drawMeter();drawRain();S.target=6;requestAnimationFrame(frame);
-window.__makcha={S,setSan,setView,setPassenger,scare,lightning,P};
+try{const b=+localStorage.getItem('makcha.best'),n=+localStorage.getItem('makcha.nights')||0;if(n)$('#best').textContent+=' · '+(n+1)+'번째 밤';if(b)$('#best').textContent+=' · 최고 기록 '+b.toLocaleString()+'원';
+  if(localStorage.getItem('makcha.ghost'))ghostHands()}catch(e){}
+drawNavi();drawMeter();drawRain();drawSideRain();S.target=6;requestAnimationFrame(frame);
+window.__makcha={S,setSan,setView,setPassenger,scare,lightning,P,haunt,roadFigure,slapHand,apparition,flood,phone,finale,ending,ghostHands};
 })();
 </script>

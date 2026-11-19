@@ -45,5 +45,9 @@ bash tools/build_zip.sh v1
 - **카메라**: `VIEWS`의 main(운전석)/navi/mirror/side/back. 손님은 룸미러(`mirCam` 렌더 타깃)로만 보인다.
 - **손님 데이터**: `P` 객체. 손님마다 `intro`, `beats`(장면 4개: 지문 `text`, 대사 `say`, `choices`, `silence`), `obs`(룸미러/사이드미러/네비/뒷좌석 관찰 결과), `good`/`bad` 결말.
   - 선택지 효과: `san`(정신력), `doom`(누적이 `limit` 이상이면 나쁜 결말), `scare`(점프 스케어), `navi`(네비 뒤틀림), `flash`(번개), `charm`(부적).
-- **진행**: `run()` → 손님 3명(`lineup()`, 귀신 2 + 사람 1) → `ending()`.
-- **디버그**: 브라우저 콘솔에서 `__makcha.setView('mirror')`, `__makcha.scare('wet')`, `__makcha.setPassenger('black')` 등.
+- **진행**: `run()` → 손님 3명(`lineup()`, 귀신 2 + 사람 1) → 마지막 콜 `finale()` → `ending()`.
+- **예고 없는 것들**: `haunt()`가 15~30초마다 하나를 고른다. 도로 위의 사람(`roadFigure`), 번개에만 보이는 창밖 얼굴·조수석의 것(`apparition`), 앞유리의 손(`slapHand`), 정신력이 낮을 때의 한 프레임 얼굴. 대화를 멈추지 않고 지나간다.
+- **선택지**: 제한 시간 16초. 정신력 50 이상이면 위험한 대답이 지직거리고, 50 미만이면 경고가 사라지며 시간 초과 시 입이 멋대로 대답한다. 30 미만이면 아무 대답이나 지직거린다.
+- **전화**: 세 번째 손님을 태운 동안 한 번(`phone()`). 손님에게 허락을 구하면 "안돼."가 화면을 덮는다(`flood()`).
+- **엔딩**: 마지막 콜의 대답과 운행 결과에 따라 `내일도 운행` / `귀가` / `막차`(손님을 모두 무사히 내려 주고 사과했을 때), 정신력 0이면 `미귀환`. `막차`를 보면 운전사의 손이 검게 남는다(localStorage `makcha.ghost`).
+- **디버그**: 브라우저 콘솔에서 `__makcha.setView('mirror')`, `__makcha.scare('wet')`, `__makcha.haunt()`, `__makcha.slapHand()`, `__makcha.flood('손님','wet')` 등.
